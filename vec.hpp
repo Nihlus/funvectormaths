@@ -4,6 +4,8 @@
 #include <math.h>
 #include <algorithm>
 #include <initializer_list>
+#include <iostream>
+#include <float.h>
 
 #define M_PI		3.14159265358979323846
 #define M_PIf ((float)M_PI)
@@ -15,6 +17,41 @@ template<int N, typename T>
 struct vec
 {
     T v[N];
+
+    /*vec(std::initializer_list<T> init)
+    {
+        if(init.size() == 1)
+        {
+            for(int i=0; i<N; i++)
+            {
+                v[i] = *(init.begin());
+            }
+        }
+        else
+        {
+            int i;
+
+            for(i=0; i<init.size(); i++)
+            {
+                v[i] = *(init.begin() + i);
+            }
+
+            for(; i<N; i++)
+            {
+                v[i] = 0.f;
+            }
+        }
+    }*/
+
+    /*vec() = default;
+
+    vec(float val)
+    {
+        for(int i=0; i<N; i++)
+        {
+            v[i] = val;
+        }
+    }*/
 
     vec<N, T>& operator=(T val)
     {
@@ -160,13 +197,102 @@ struct vec
         return val;
     }
 
+    float sum() const
+    {
+        float accum = 0;
+
+        for(int i=0; i<N; i++)
+        {
+            accum += v[i];
+        }
+
+        return accum;
+    }
+
+    float absolute_sum() const
+    {
+        float accum = 0;
+
+        for(int i=0; i<N; i++)
+        {
+            accum += fabs(v[i]);
+        }
+
+        return accum;
+    }
+
+    float max_elem() const
+    {
+        float val = -FLT_MAX;
+
+        for(const auto& s : v)
+        {
+            if(s > val)
+                val = s;
+        }
+
+        return val;
+    }
+
+    float min_elem() const
+    {
+        float val = FLT_MAX;
+
+        for(const auto& s : v)
+        {
+            if(s < val)
+                val = s;
+        }
+
+        return val;
+    }
+
+    int which_element_minimum() const
+    {
+        float val = FLT_MAX;
+        int num = -1;
+
+        for(int i=0; i<N; i++)
+        {
+            if(v[i] < val)
+            {
+                val = v[i];
+                num = i;
+            }
+        }
+
+        return num;
+    }
+
+    float largest_elem() const
+    {
+        float val = -1;
+
+        for(const auto& s : v)
+        {
+            float r = fabs(s);
+
+            if(r > val)
+                val = r;
+        }
+
+        return val;
+    }
+
 
     vec<N, T> norm() const
     {
         float len = length();
 
         if(len < 0.00001f)
-            return {0.f};
+        {
+            vec<N, T> ret;
+
+            for(int i=0; i<N; i++)
+                ret.v[i] = 0.f;
+
+            return ret;
+        }
 
         return (*this) / len;
     }
@@ -249,21 +375,17 @@ struct vec
 
         return v[0];
     }
+
+    friend std::ostream& operator<<(std::ostream& os, const vec<N, T>& v1)
+    {
+        for(int i=0; i<N-1; i++)
+        {
+            os << std::to_string(v1.v[i]) << " ";
+        }
+
+        os << std::to_string(v1.v[N-1]);
+    }
 };
-
-///rename this function
-template<int N, typename T>
-inline
-vec<N, T> point2line_shortest(const vec<N, T>& lp, const vec<N, T>& ldir, const vec<N, T>& p)
-{
-    vec<N, T> ret;
-
-    auto n = ldir.norm();
-
-    ret = (lp - p) - dot(lp - p, n) * n;
-
-    return ret;
-}
 
 template<int N, typename T>
 inline
@@ -274,6 +396,36 @@ vec<N, T> sqrtf(const vec<N, T>& v)
     for(int i=0; i<N; i++)
     {
         ret.v[i] = sqrtf(v.v[i]);
+    }
+
+    return ret;
+}
+
+template<int N, typename T>
+inline
+vec<N, T> round(const vec<N, T>& v)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = roundf(v.v[i]);
+    }
+
+    return ret;
+}
+
+template<int N, typename T>
+inline
+vec<N, T> round_to_multiple(const vec<N, T>& v, int multiple)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = v.v[i] / multiple;
+        ret.v[i] = round(ret.v[i]);
+        ret.v[i] *= multiple;
     }
 
     return ret;
@@ -325,12 +477,26 @@ bool operator== (const vec<N, T>& v1, const vec<N, T>& v2)
 
 #define V3to4(x) {x.v[0], x.v[1], x.v[2], x.v[3]}
 
+typedef vec<4, float> vec4f;
 typedef vec<3, float> vec3f;
 typedef vec<2, float> vec2f;
 
 typedef vec<3, int> vec3i;
 typedef vec<2, int> vec2i;
 
+template<int N, typename T>
+inline
+vec<N, T> val_to_vec(float val)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = val;
+    }
+
+    return ret;
+}
 
 inline float randf_s()
 {
@@ -412,6 +578,28 @@ T clamp(T v1, T p1, T p2)
 }
 
 
+///0 -> 1, returns packed RGBA uint
+inline
+uint32_t rgba_to_uint(const vec<4, float>& rgba)
+{
+    vec<4, float> val = clamp(rgba, 0.f, 1.f);
+
+    uint8_t r = val.v[0] * 255;
+    uint8_t g = val.v[1] * 255;
+    uint8_t b = val.v[2] * 255;
+    uint8_t a = val.v[3] * 255;
+
+    uint32_t ret = (r << 24) | (g << 16) | (b << 8) | a;
+
+    return ret;
+}
+
+inline
+uint32_t rgba_to_uint(const vec<3, float>& rgb)
+{
+    return rgba_to_uint({rgb.v[0], rgb.v[1], rgb.v[2], 1.f});
+}
+
 inline vec3f rot(const vec3f& p1, const vec3f& pos, const vec3f& rot)
 {
     return p1.rot(pos, rot);
@@ -459,12 +647,14 @@ inline vec<N, T> operator-(const vec<N, T>& v1)
     return ret;
 }
 
-inline vec3f operator*(float v, const vec3f& v1)
+template<int N, typename T>
+inline vec<N, T> operator*(float v, const vec<N, T>& v1)
 {
     return v1 * v;
 }
 
-inline vec3f operator+(float v, const vec3f& v1)
+template<int N, typename T>
+inline vec<N, T> operator+(float v, const vec<N, T>& v1)
 {
     return v1 + v;
 }
@@ -474,9 +664,17 @@ inline vec3f operator+(float v, const vec3f& v1)
     return v1 - v;
 }*/
 
-inline vec3f operator/(float v, const vec3f& v1)
+///should convert these functions to be N/T
+
+template<int N, typename T>
+inline vec<N, T> operator/(float v, const vec<N, T>& v1)
 {
-    return v1 / v;
+    vec<N, T> top;
+
+    for(int i=0; i<N; i++)
+        top.v[i] = v;
+
+    return top / v1;
 }
 
 inline float r2d(float v)
@@ -631,7 +829,7 @@ inline vec<N, T> mix(const vec<N, T>& v1, const vec<N, T>& v2, float a)
 
     for(int i=0; i<N; i++)
     {
-        ret.v[i] = v1.v[i] + (v2.v[i] - v1.v[i]) * a;
+        ret.v[i] = v1.v[i] * (1.f - a) + v2.v[i] * a;//v1.v[i] + (v2.v[i] - v1.v[i]) * a;
     }
 
     return ret;
@@ -673,6 +871,60 @@ inline vec<N, T> slerp(const vec<N, T>& v1, const vec<N, T>& v2, float a)
     ret = a1 * v1 + a2 * v2;
 
     return ret;
+}
+
+///there is almost certainly a better way to do this
+///this function doesn't work properly, don't use it
+inline
+float circle_minimum_distance(float v1, float v2)
+{
+    v1 = fmodf(v1, M_PI * 2.f);
+    v2 = fmodf(v2, M_PI * 2.f);
+
+    float d1 = fabs(v2 - v1);
+    float d2 = fabs(v2 - v1 - M_PI*2.f);
+    float d3 = fabs(v2 - v1 + M_PI*2.f);
+
+    vec3f v = (vec3f){d1, d2, d3};
+
+    if(v.which_element_minimum() == 0)
+    {
+        return v2 - v1;
+    }
+
+    if(v.which_element_minimum() == 1)
+    {
+        return v2 - v1 - M_PI*2.f;
+    }
+
+    if(v.which_element_minimum() == 2)
+    {
+        return v2 - v1 + M_PI*2.f;
+    }
+
+    //float result = std::min(d1, std::min(d2, d3));
+}
+
+///rename this function
+template<int N, typename T>
+inline
+vec<N, T> point2line_shortest(const vec<N, T>& lp, const vec<N, T>& ldir, const vec<N, T>& p)
+{
+    vec<N, T> ret;
+
+    auto n = ldir.norm();
+
+    ret = (lp - p) - dot(lp - p, n) * n;
+
+    return ret;
+}
+
+///https://stackoverflow.com/questions/1560492/how-to-tell-whether-a-point-is-to-the-right-or-left-side-of-a-line
+template<typename T>
+inline
+bool is_left_side(const vec<2, T>& l1, const vec<2, float>& l2, const vec<2, float>& lp)
+{
+    return ((l2.v[0] - l1.v[0]) * (lp.v[1] - l1.v[1]) - (l2.v[1] - l1.v[1]) * (lp.v[0] - l1.v[0])) > 0;
 }
 
 
