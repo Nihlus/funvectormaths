@@ -18,7 +18,7 @@ struct vec
 {
     T v[N];
 
-    /*vec(std::initializer_list<T> init)
+    vec(std::initializer_list<T> init)
     {
         if(init.size() == 1)
         {
@@ -41,9 +41,9 @@ struct vec
                 v[i] = 0.f;
             }
         }
-    }*/
+    }
 
-    /*vec() = default;
+    vec() = default;
 
     vec(float val)
     {
@@ -51,7 +51,7 @@ struct vec
         {
             v[i] = val;
         }
-    }*/
+    }
 
     vec<N, T>& operator=(T val)
     {
@@ -209,7 +209,7 @@ struct vec
         return accum;
     }
 
-    float absolute_sum() const
+    float sum_absolute() const
     {
         float accum = 0;
 
@@ -497,7 +497,6 @@ vec<N, T> val_to_vec(float val)
 
     return ret;
 }
-
 inline float randf_s()
 {
     return (float)rand() / (RAND_MAX + 1.f);
@@ -551,9 +550,19 @@ vec<N, T> clamp(vec<N, T> v1, T p1, T p2)
     return v1;
 }
 
-template<int N, typename T>
+template<typename T, typename U, typename V>
 inline
-vec<N, T> clamp(const vec<N, T>& v1, const vec<N, T>& p1, const vec<N, T>& p2)
+T clamp(T v1, U p1, V p2)
+{
+    v1 = v1 < p1 ? p1 : v1;
+    v1 = v1 > p2 ? p2 : v1;
+
+    return v1;
+}
+
+template<int N, typename T, typename U, typename V>
+inline
+vec<N, T> clamp(const vec<N, T>& v1, const vec<N, U>& p1, const vec<N, V>& p2)
 {
     vec<N, T> ret;
 
@@ -564,17 +573,6 @@ vec<N, T> clamp(const vec<N, T>& v1, const vec<N, T>& p1, const vec<N, T>& p2)
     }
 
     return ret;
-}
-
-
-template<typename T>
-inline
-T clamp(T v1, T p1, T p2)
-{
-    v1 = v1 < p1 ? p1 : v1;
-    v1 = v1 > p2 ? p2 : v1;
-
-    return v1;
 }
 
 
@@ -597,7 +595,7 @@ uint32_t rgba_to_uint(const vec<4, float>& rgba)
 inline
 uint32_t rgba_to_uint(const vec<3, float>& rgb)
 {
-    return rgba_to_uint({rgb.v[0], rgb.v[1], rgb.v[2], 1.f});
+    return rgba_to_uint((vec4f){rgb.v[0], rgb.v[1], rgb.v[2], 1.f});
 }
 
 inline vec3f rot(const vec3f& p1, const vec3f& pos, const vec3f& rot)
@@ -747,27 +745,27 @@ inline vec<N, T> max(const vec<N, T>& v1, const vec<N, T>& v2)
     return ret;
 }
 
-template<int N, typename T>
-inline vec<N, T> min(const vec<N, T>& v1, T v2)
+template<int N, typename T, typename U>
+inline vec<N, T> min(const vec<N, T>& v1, U v2)
 {
     vec<N, T> ret;
 
     for(int i=0; i<N; i++)
     {
-        ret.v[i] = std::min(v1.v[i], v2);
+        ret.v[i] = std::min(v1.v[i], (T)v2);
     }
 
     return ret;
 }
 
-template<int N, typename T>
-inline vec<N, T> max(const vec<N, T>& v1, T v2)
+template<int N, typename T, typename U>
+inline vec<N, T> max(const vec<N, T>& v1, U v2)
 {
     vec<N, T> ret;
 
     for(int i=0; i<N; i++)
     {
-        ret.v[i] = std::max(v1.v[i], v2);
+        ret.v[i] = std::max(v1.v[i], (T)v2);
     }
 
     return ret;
@@ -871,6 +869,20 @@ inline vec<N, T> slerp(const vec<N, T>& v1, const vec<N, T>& v2, float a)
     ret = a1 * v1 + a2 * v2;
 
     return ret;
+}
+
+
+template<int N, typename T, typename U>
+inline
+void line_draw_helper(const vec<N, T>& start, const vec<N, T>& finish, vec<N, T>& out_dir, U& num)
+{
+    vec<N, T> dir = (finish - start);
+    T dist = dir.largest_elem();
+
+    dir = dir / dist;
+
+    out_dir = dir;
+    num = dist;
 }
 
 ///there is almost certainly a better way to do this
