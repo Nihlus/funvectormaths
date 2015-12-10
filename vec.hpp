@@ -352,7 +352,7 @@ struct vec
         return atan2(v[1], v[0]);
     }
 
-    vec<3, T> get_euler()
+    vec<3, T> get_euler() const
     {
         static_assert(N == 3, "Can only convert 3 element vectors into euler angles");
 
@@ -473,6 +473,12 @@ bool operator== (const vec<N, T>& v1, const vec<N, T>& v2)
             return false;
 
     return true;
+}
+
+template<int N, typename T>
+bool operator>= (const vec<N, T>& v1, const vec<N, T>& v2)
+{
+    return v1 > v2 || v1 == v2;
 }
 
 #define V3to4(x) {x.v[0], x.v[1], x.v[2], x.v[3]}
@@ -871,6 +877,59 @@ inline vec<N, T> slerp(const vec<N, T>& v1, const vec<N, T>& v2, float a)
     return ret;
 }
 
+inline vec3f generate_flat_normal(const vec3f& p1, const vec3f& p2, const vec3f& p3)
+{
+    return cross(p2 - p1, p3 - p1).norm();
+}
+
+///t should be some container of vec3f
+///sorted via 0 -> about vector, plane perpendicular to that
+template<typename T>
+inline std::vector<vec3f> sort_anticlockwise(const T& in, const vec3f& about)
+{
+    int num = in.size();
+
+    std::vector<vec3f> out;
+    std::vector<std::pair<float, int>> intermediate;
+
+    out.reserve(num);
+    intermediate.reserve(num);
+
+    vec3f euler = about.get_euler();
+
+    vec3f centre_point = about.back_rot(0.f, euler);
+
+    vec2f centre_2d = (vec2f){centre_point.v[0], centre_point.v[2]};
+
+    for(int i=0; i<num; i++)
+    {
+        vec3f vec_pos = in[i];
+
+        vec3f rotated = vec_pos.back_rot(0.f, euler);
+
+        vec2f rot_2d = (vec2f){rotated.v[0], rotated.v[2]};
+
+        vec2f rel = rot_2d - centre_2d;
+
+        float angle = rel.angle();
+
+        intermediate.push_back({angle, i});
+    }
+
+    std::sort(intermediate.begin(), intermediate.end(),
+              [](auto i1, auto i2)
+              {
+                  return i1.first < i2.first;
+              }
+              );
+
+    for(auto& i : intermediate)
+    {
+        out.push_back(in[i.second]);
+    }
+
+    return out;
+}
 
 template<int N, typename T, typename U>
 inline
