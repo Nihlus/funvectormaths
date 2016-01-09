@@ -6,12 +6,14 @@
 #include <initializer_list>
 #include <iostream>
 #include <float.h>
+#include <random>
 
 #define M_PI		3.14159265358979323846
 #define M_PIf ((float)M_PI)
 
 ///bad, only for temporary debugging
 #define EXPAND_3(vec) vec.v[0], vec.v[1], vec.v[2]
+#define EXPAND_2(vec) vec.v[0], vec.v[1]
 
 template<int N, typename T>
 struct vec
@@ -543,6 +545,28 @@ vec<N, T> randf()
     return ret;
 }
 
+inline
+float rand_det_s(std::minstd_rand& rnd, float M, float MN)
+{
+    float scaled = (rnd() - rnd.min()) / (float)(rnd.max() - rnd.min());
+
+    return scaled * (MN - M) + M;
+}
+
+template<int N, typename T>
+inline
+vec<N, T> rand_det(std::minstd_rand& rnd, const vec<N, T>& M, const vec<N, T>& MN)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = rand_det_s(rnd, M.v[i], MN.v[i]);
+    }
+
+    return ret;
+}
+
 template<int N, typename T>
 inline
 vec<N, T> clamp(vec<N, T> v1, T p1, T p2)
@@ -625,6 +649,12 @@ inline vec3f cross(const vec3f& v1, const vec3f& v2)
     return ret;
 }
 
+///counterclockwise
+inline vec2f perpendicular(const vec2f& v1)
+{
+    return {-v1.v[1], v1.v[0]};
+}
+
 template<int N, typename T>
 inline float dot(const vec<N, T>& v1, const vec<N, T>& v2)
 {
@@ -636,6 +666,13 @@ inline float dot(const vec<N, T>& v1, const vec<N, T>& v2)
     }
 
     return ret;
+}
+
+template<int N, typename T>
+inline
+float angle_between_vectors(const vec<N, T>& v1, const vec<N, T>& v2)
+{
+    return acos(dot(v1.norm(), v2.norm()));
 }
 
 template<int N, typename T>
@@ -723,6 +760,22 @@ inline vec<N, T> ceil(const vec<N, T>& v)
     }
 
     return v1;
+}
+
+template<int N, typename T>
+inline vec<N, T> ceil_away_from_zero(const vec<N, T>& v1)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        if(v1.v[i] >= 0)
+            ret.v[i] = ceil(v1.v[i]);
+        if(v1.v[i] < 0)
+            ret.v[i] = floor(v1.v[i]);
+    }
+
+    return ret;
 }
 
 template<int N, typename T>
@@ -885,7 +938,7 @@ inline vec3f generate_flat_normal(const vec3f& p1, const vec3f& p2, const vec3f&
 ///t should be some container of vec3f
 ///sorted via 0 -> about vector, plane perpendicular to that
 template<typename T>
-inline std::vector<vec3f> sort_anticlockwise(const T& in, const vec3f& about)
+inline std::vector<vec3f> sort_anticlockwise(const T& in, const vec3f& about, std::vector<std::pair<float, int>>* pass_out = nullptr)
 {
     int num = in.size();
 
@@ -926,6 +979,11 @@ inline std::vector<vec3f> sort_anticlockwise(const T& in, const vec3f& about)
     for(auto& i : intermediate)
     {
         out.push_back(in[i.second]);
+    }
+
+    if(pass_out != nullptr)
+    {
+        *pass_out = intermediate;
     }
 
     return out;
