@@ -339,6 +339,9 @@ struct vec
     {
         float len = length();
 
+        if(len < 0.00001f)
+            return *this;
+
         float cur_angle = angle();
 
         float new_angle = cur_angle + rot_angle;
@@ -354,6 +357,7 @@ struct vec
         return atan2(v[1], v[0]);
     }
 
+    ///from top
     vec<3, T> get_euler() const
     {
         static_assert(N == 3, "Can only convert 3 element vectors into euler angles");
@@ -366,10 +370,36 @@ struct vec
 
         float y = atan2(dir.v[2], dir.v[0]);
 
+        ///z y x then?
         vec<3, T> rot = {0, y, angle2};
 
         return rot;
     }
+
+    ///so y is along rectangle axis
+    ///remember, z is not along the rectangle axis, its perpendicular to x
+    ///extrinsic x, y, z
+    ///intrinsic z, y, x
+
+    /*vec<3, T> get_euler_alt() const
+    {
+        vec<3, T> dir = *this;
+
+        vec<3, T> pole = {0, 1, 0};
+
+        float angle_to_pole = -atan2(dir.v[2], dir.v[1]);//acos(dot(pole, dir.norm()));
+
+        float zc = angle_to_pole;//M_PI/2.f - angle_to_pole;
+
+        float xc = atan2(dir.v[0], dir.v[1]) + M_PI;
+
+        //static float test = 0.f;
+        //test += 0.001f;
+
+        vec<3, T> rot = {zc, 0.f, -xc};
+
+        return rot;
+    }*/
 
     operator float() const
     {
@@ -428,6 +458,20 @@ vec<N, T> round_to_multiple(const vec<N, T>& v, int multiple)
         ret.v[i] = v.v[i] / multiple;
         ret.v[i] = round(ret.v[i]);
         ret.v[i] *= multiple;
+    }
+
+    return ret;
+}
+
+template<int N, typename T>
+inline
+vec<N, T> vcos(const vec<N, T>& v)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = cosf(v.v[i]);
     }
 
     return ret;
@@ -892,6 +936,19 @@ inline vec<N, T> mix(const vec<N, T>& v1, const vec<N, T>& v2, float a)
     return ret;
 }
 
+template<int N, typename T>
+inline vec<N, T> mix3(const vec<N, T>& v1, const vec<N, T>& mid, const vec<N, T>& v2, float a)
+{
+    if(a <= 0.5f)
+    {
+        return mix(v1, mid, a * 2.f);
+    }
+    else
+    {
+        return mix(mid, v2, (a - 0.5f) * 2.f);
+    }
+}
+
 /*template<int N, typename T>
 inline vec<N, T> slerp(const vec<N, T>& v1, const vec<N, T>& v2, float a)
 {
@@ -928,6 +985,42 @@ inline vec<N, T> slerp(const vec<N, T>& v1, const vec<N, T>& v2, float a)
     ret = a1 * v1 + a2 * v2;
 
     return ret;
+}
+
+template<int N, typename T>
+inline vec<N, T> slerp3(const vec<N, T>& v1, const vec<N, T>& mid, const vec<N, T>& v2, float a)
+{
+    if(a <= 0.5f)
+    {
+        return slerp(v1, mid, a * 2.f);
+    }
+    else
+    {
+        return slerp(mid, v2, (a - 0.5f) * 2.f);
+    }
+}
+
+template<int N, typename T>
+inline
+vec<N, T> cosint(const vec<N, T>& v1, const vec<N, T>& v2, float a)
+{
+    float mu2 = (1.f-cosf(a*M_PI))/2.f;
+
+    return v1*(1-mu2) + v2*mu2;
+}
+
+template<int N, typename T>
+inline
+vec<N, T> cosint3(const vec<N, T>& v1, const vec<N, T>& mid, const vec<N, T>& v2, float a)
+{
+    if(a <= 0.5f)
+    {
+        return cosint(v1, mid, a * 2.f);
+    }
+    else
+    {
+        return cosint(mid, v2, (a - 0.5f) * 2.f);
+    }
 }
 
 inline vec3f generate_flat_normal(const vec3f& p1, const vec3f& p2, const vec3f& p3)
