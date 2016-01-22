@@ -45,7 +45,14 @@ struct vec
         }
     }
 
-    vec() = default;
+    ///lets modernise the code a little
+    vec()
+    {
+        for(int i=0; i<N; i++)
+        {
+            v[i] = T();
+        }
+    }
 
     vec(float val)
     {
@@ -416,8 +423,26 @@ struct vec
         }
 
         os << std::to_string(v1.v[N-1]);
+
+        return os;
     }
 };
+
+template<int N, typename T>
+inline
+vec<2, T> s_xz(const vec<N, T>& v)
+{
+    static_assert(N >= 3, "Not enough elements for xz swizzle");
+
+    return {v.v[0], v.v[2]};
+}
+
+template<int N, typename T>
+inline
+vec<3, T> s_xz_to_xyz(const vec<2, T>& v)
+{
+    return {v.v[0], 0.f, v.v[1]};
+}
 
 template<int N, typename T>
 inline
