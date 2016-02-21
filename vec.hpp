@@ -439,6 +439,33 @@ vec<2, T> s_xz(const vec<N, T>& v)
 
 template<int N, typename T>
 inline
+vec<2, T> s_xy(const vec<N, T>& v)
+{
+    static_assert(N >= 2, "Not enough elements for xy swizzle");
+
+    return {v.v[0], v.v[1]};
+}
+
+template<int N, typename T>
+inline
+vec<2, T> s_yz(const vec<N, T>& v)
+{
+    static_assert(N >= 3, "Not enough elements for xy swizzle");
+
+    return {v.v[1], v.v[2]};
+}
+
+template<int N, typename T>
+inline
+vec<2, T> s_zy(const vec<N, T>& v)
+{
+    static_assert(N >= 3, "Not enough elements for xy swizzle");
+
+    return {v.v[2], v.v[1]};
+}
+
+template<int N, typename T>
+inline
 vec<3, T> s_xz_to_xyz(const vec<2, T>& v)
 {
     return {v.v[0], 0.f, v.v[1]};
@@ -1048,6 +1075,24 @@ vec<N, T> cosint3(const vec<N, T>& v1, const vec<N, T>& mid, const vec<N, T>& v2
     }
 }
 
+/*float cosif3(float y1, float y2, float y3, float frac)
+{
+    float fsin = sin(frac * M_PI);
+
+    float val;
+
+    if(frac < 0.5f)
+    {
+        val = (1.f - fsin) * y1 + fsin * y2;
+    }
+    else
+    {
+        val = (fsin) * y2 + (1.f - fsin) * y3;
+    }
+
+    return val;
+}*/
+
 inline vec3f generate_flat_normal(const vec3f& p1, const vec3f& p2, const vec3f& p3)
 {
     return cross(p2 - p1, p3 - p1).norm();
@@ -1055,6 +1100,8 @@ inline vec3f generate_flat_normal(const vec3f& p1, const vec3f& p2, const vec3f&
 
 ///t should be some container of vec3f
 ///sorted via 0 -> about vector, plane perpendicular to that
+///I should probably make the second version an overload/specialisation, rather than a runtime check
+///performance isnt 100% important though currently
 template<typename T>
 inline std::vector<vec3f> sort_anticlockwise(const T& in, const vec3f& about, std::vector<std::pair<float, int>>* pass_out = nullptr)
 {
