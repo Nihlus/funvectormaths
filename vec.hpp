@@ -529,6 +529,20 @@ vec<N, T> vcos(const vec<N, T>& v)
     return ret;
 }
 
+template<int N, typename T>
+inline
+vec<N, T> vsin(const vec<N, T>& v)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = sinf(v.v[i]);
+    }
+
+    return ret;
+}
+
 /*template<int N, typename T>
 bool operator<(const vec<N, T>& v1, const vec<N, T>& v2)
 {
@@ -924,6 +938,51 @@ inline vec<N, T> max(const vec<N, T>& v1, U v2)
     }
 
     return ret;
+}
+
+template<int N, typename T>
+inline vec<N, T> axis_angle(const vec<N, T>& v, const vec<N, T>& axis, float angle)
+{
+    return cos(angle) * v + sin(angle) * cross(axis, v) + (1.f - cos(angle)) * dot(axis, v) * axis;
+}
+
+
+inline
+vec3f aa_to_euler(const vec3f& axis, float angle)
+{
+    vec3f naxis = axis.norm();
+
+    float s = sin(angle);
+	float c = cos(angle);
+	float t = 1-c;
+
+	float x = naxis.v[0];
+	float y = naxis.v[0];
+	float z = naxis.v[0];
+
+	if ((x*y*t + z*s) > 0.998f)
+    { // north pole singularity detected
+		float heading = 2*atan2(x*sin(angle/2), cos(angle/2));
+		float attitude = M_PI/2;
+		float bank = 0;
+
+		return {attitude, heading, bank};
+	}
+
+	if ((x*y*t + z*s) < -0.998)
+    { // south pole singularity detected
+		float heading = -2*atan2(x*sin(angle/2), cos(angle/2));
+		float attitude = -M_PI/2;
+		float bank = 0;
+
+        return {attitude, heading, bank};
+	}
+
+	float heading = atan2(y * s- x * z * t , 1 - (y*y+ z*z ) * t);
+	float attitude = asin(x * y * t + z * s) ;
+	float bank = atan2(x * s - y * z * t , 1 - (x*x + z*z) * t);
+
+	return {attitude, heading, bank};
 }
 
 template<typename U>
@@ -1330,9 +1389,10 @@ struct mat
         return {v[2][0], v[2][1], v[2][2]};
     }
 
+    #if 0
     void from_dir(vec3f dir)
     {
-        vec3f up = {0, 1, 0};
+        /*vec3f up = {0, 1, 0};
 
         vec3f xaxis = cross(up, dir).norm();
         vec3f yaxis = cross(dir, xaxis).norm();
@@ -1347,26 +1407,76 @@ struct mat
 
         v[2][0] = xaxis.v[2];
         v[2][1] = yaxis.v[2];
-        v[2][2] = dir.v[2];
-    }
+        v[2][2] = dir.v[2];*/
 
-    void load_rotation_matrix(vec3f rotation)
+
+    }
+    #endif
+
+    void load_rotation_matrix(vec3f _rotation)
     {
-        vec3f c;
+        /*vec3f c;
         vec3f s;
 
         for(int i=0; i<3; i++)
         {
-            c.v[i] = cos(-rotation.v[i]);
-            s.v[i] = sin(-rotation.v[i]);
+            c.v[i] = cos(rotation.v[i]);
+            s.v[i] = sin(rotation.v[i]);
         }
 
         ///rotation matrix
-        vec3f r1 = {c.v[1]*c.v[2], -c.v[1]*s.v[2], s.v[1]};
-        vec3f r2 = {c.v[0]*s.v[2] + c.v[2]*s.v[0]*s.v[1], c.v[0]*c.v[2] - s.v[0]*s.v[1]*s.v[2], -c.v[1]*s.v[0]};
-        vec3f r3 = {s.v[0]*s.v[2] - c.v[0]*c.v[2]*s.v[1], c.v[2]*s.v[0] + c.v[0]*s.v[1]*s.v[2], c.v[1]*c.v[0]};
+        //vec3f r1 = {c.v[1]*c.v[2], -c.v[1]*s.v[2], s.v[1]};
+        //vec3f r2 = {c.v[0]*s.v[2] + c.v[2]*s.v[0]*s.v[1], c.v[0]*c.v[2] - s.v[0]*s.v[1]*s.v[2], -c.v[1]*s.v[0]};
+        //vec3f r3 = {s.v[0]*s.v[2] - c.v[0]*c.v[2]*s.v[1], c.v[2]*s.v[0] + c.v[0]*s.v[1]*s.v[2], c.v[1]*c.v[0]};
 
-        load(r1, r2, r3);
+        vec3f r1 = {c.v[1] * c.v[2], c.v[0] * s.v[2] + s.v[0] * s.v[1] * c.v[2], s.v[0] * s.v[2] - c.v[0] * s.v[1] * c.v[2]};
+        vec3f r2 = {-c.v[1] * s.v[2], c.v[0] * c.v[2] - s.v[0] * s.v[1] * s.v[2], s.v[0] * c.v[2] + c.v[0] * s.v[1] * s.v[2]};
+        vec3f r3 = {s.v[1], -s.v[0] * c.v[1], c.v[0] * c.v[1]};
+
+        load(r1, r2, r3);*/
+
+        vec3f rotation = {_rotation.v[0], _rotation.v[1], _rotation.v[2]};
+
+        //rotation = rotation + M_PI/2.f;
+
+        vec3f c = vcos(rotation);
+        vec3f s = vsin(rotation);
+
+        mat<3, float> v1;
+
+        v1.load({1, 0, 0}, {0, c.v[0], s.v[0]}, {0, -s.v[0], c.v[0]});
+
+        mat<3, float> v2;
+
+        v2.load({c.v[1], 0, -s.v[1]}, {0, 1, 0}, {s.v[1], 0, c.v[1]});
+
+        mat<3, float> v3;
+
+        v3.load({c.v[2], s.v[2], 0}, {-s.v[2], c.v[2], 0}, {0, 0, 1});
+
+
+        *this = v1 * v2 * v3;
+    }
+
+    vec3f get_rotation()
+    {
+        vec3f rotation;
+
+        //rotation.v[0] = atan2(v[2][0], v[2][1]);
+        //rotation.v[1] = acos(v[2][2]);
+        //rotation.v[2] = -atan2(v[0][2], v[1][2]);
+
+        //rotation.v[2] = -atan2(v[2][1], v[2][2]);
+        //rotation.v[1] = asin(v[2][0]);
+        //rotation.v[0] = -atan2(v[1][0], v[0][0]);
+
+        rotation.v[0] = atan2(v[1][2], v[2][2]);
+        rotation.v[1] = -asin(v[0][2]);
+        rotation.v[2] = atan2(v[0][1], v[0][0]);
+
+        //printf("[2][2] %f\n", v[2][2]);
+
+        return rotation;
     }
 
     vec<3, T> operator*(const vec<3, T>& other) const
@@ -1378,6 +1488,30 @@ struct mat
         val.v[2] = v[2][0] * other.v[0] + v[2][1] * other.v[1] + v[2][2] * other.v[2];
 
         return val;
+    }
+
+    mat<3, T> operator*(const mat<3, T>& other) const
+    {
+        mat<3, T> ret;
+
+        for(int j=0; j<3; j++)
+        {
+            for(int i=0; i<3; i++)
+            {
+                //float val = v[j][0] * other.v[0][i] + v[j][1] * other.v[1][i] + v[j][2] * other.v[2][i];
+
+                float accum = 0;
+
+                for(int k=0; k<3; k++)
+                {
+                    accum += v[j][k] * other.v[k][i];
+                }
+
+                ret.v[j][i] = accum;
+            }
+        }
+
+        return ret;
     }
 };
 
