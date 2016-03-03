@@ -54,7 +54,7 @@ struct vec
         }
     }
 
-    vec(float val)
+    vec(T val)
     {
         for(int i=0; i<N; i++)
         {
@@ -148,7 +148,9 @@ struct vec
         return r;
     }
 
-    vec<N, T> operator*(float other) const
+    ///beginnings of making this actually work properly
+    template<typename U>
+    vec<N, T> operator*(U other) const
     {
         vec<N, T> r;
 
@@ -172,7 +174,7 @@ struct vec
         return r;
     }
 
-    vec<N, T> operator/(float other) const
+    vec<N, T> operator/(T other) const
     {
         vec<N, T> r;
 
@@ -184,9 +186,9 @@ struct vec
         return r;
     }
 
-    float squared_length() const
+    T squared_length() const
     {
-        float sqsum = 0;
+        T sqsum = 0;
 
         for(int i=0; i<N; i++)
         {
@@ -197,13 +199,25 @@ struct vec
     }
 
 
-    float length() const
+    T length() const
     {
-        float l = squared_length();
+        T l = squared_length();
 
-        float val = sqrtf(l);
+        T val = sqrt(l);
 
         return val;
+    }
+
+    double length_d() const
+    {
+        double l = 0;
+
+        for(int i=0; i<N; i++)
+        {
+            l += v[i]*v[i];
+        }
+
+        return sqrt(l);
     }
 
     float sum() const
@@ -291,7 +305,7 @@ struct vec
 
     vec<N, T> norm() const
     {
-        float len = length();
+        T len = length();
 
         if(len < 0.00001f)
         {
@@ -342,24 +356,24 @@ struct vec
 
     ///only valid for a 2-vec
     ///need to rejiggle the templates to work this out
-    vec<2, T> rot(float rot_angle)
+    vec<2, T> rot(T rot_angle)
     {
-        float len = length();
+        T len = length();
 
         if(len < 0.00001f)
             return *this;
 
-        float cur_angle = angle();
+        T cur_angle = angle();
 
-        float new_angle = cur_angle + rot_angle;
+        T new_angle = cur_angle + rot_angle;
 
-        float nx = len * cos(new_angle);
-        float ny = len * sin(new_angle);
+        T nx = len * cos(new_angle);
+        T ny = len * sin(new_angle);
 
         return {nx, ny};
     }
 
-    float angle()
+    T angle()
     {
         return atan2(v[1], v[0]);
     }
@@ -759,16 +773,18 @@ inline vec3f cross(const vec3f& v1, const vec3f& v2)
     return ret;
 }
 
+
 ///counterclockwise
-inline vec2f perpendicular(const vec2f& v1)
+template<int N, typename T>
+inline vec<N, T> perpendicular(const vec<N, T>& v1)
 {
     return {-v1.v[1], v1.v[0]};
 }
 
 template<int N, typename T>
-inline float dot(const vec<N, T>& v1, const vec<N, T>& v2)
+inline T dot(const vec<N, T>& v1, const vec<N, T>& v2)
 {
-    float ret = 0;
+    T ret = 0;
 
     for(int i=0; i<N; i++)
     {
@@ -780,7 +796,7 @@ inline float dot(const vec<N, T>& v1, const vec<N, T>& v2)
 
 template<int N, typename T>
 inline
-float angle_between_vectors(const vec<N, T>& v1, const vec<N, T>& v2)
+T angle_between_vectors(const vec<N, T>& v1, const vec<N, T>& v2)
 {
     return acos(dot(v1.norm(), v2.norm()));
 }
@@ -798,14 +814,14 @@ inline vec<N, T> operator-(const vec<N, T>& v1)
     return ret;
 }
 
-template<int N, typename T>
-inline vec<N, T> operator*(float v, const vec<N, T>& v1)
+template<int N, typename T, typename U>
+inline vec<N, U> operator*(T v, const vec<N, U>& v1)
 {
     return v1 * v;
 }
 
 template<int N, typename T>
-inline vec<N, T> operator+(float v, const vec<N, T>& v1)
+inline vec<N, T> operator+(T v, const vec<N, T>& v1)
 {
     return v1 + v;
 }
@@ -818,7 +834,7 @@ inline vec<N, T> operator+(float v, const vec<N, T>& v1)
 ///should convert these functions to be N/T
 
 template<int N, typename T>
-inline vec<N, T> operator/(float v, const vec<N, T>& v1)
+inline vec<N, T> operator/(T v, const vec<N, T>& v1)
 {
     vec<N, T> top;
 
@@ -1021,6 +1037,19 @@ inline vec<2, float> xy_to_vec(const U& xyz)
     return ret;
 }
 
+template<typename U, typename T, int N>
+inline vec<N, T> conv(const vec<N, U>& v1)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = v1.v[i];
+    }
+
+    return ret;
+}
+
 template<int N, typename T>
 inline vec<N, T> d2r(const vec<N, T>& v1)
 {
@@ -1028,7 +1057,7 @@ inline vec<N, T> d2r(const vec<N, T>& v1)
 
     for(int i=0; i<N; i++)
     {
-        ret = (v1.v[i] / 360.f) * M_PI * 2;
+        ret.v[i] = (v1.v[i] / 360.f) * M_PI * 2;
     }
 
     return ret;
@@ -1133,6 +1162,23 @@ vec<N, T> cosint3(const vec<N, T>& v1, const vec<N, T>& mid, const vec<N, T>& v2
         return cosint(mid, v2, (a - 0.5f) * 2.f);
     }
 }
+
+/*template<int N, typename T>
+inline
+vec<N, T> rejection(const vec<N, T>& v1, const vec<N, T>& v2)
+{
+    /*vec<N, T> me_to_them = v2 - v1;
+
+    me_to_them = me_to_them.norm();
+
+    float scalar_proj = dot(move_dir, me_to_them);
+
+    vec<N, T> to_them_relative = scalar_proj * me_to_them;
+
+    vec<N, T> perp = move_dir - to_them_relative;
+
+    return perp;
+}*/
 
 /*float cosif3(float y1, float y2, float y3, float frac)
 {
@@ -1286,9 +1332,20 @@ struct mat
 {
     T v[N][N];
 
+    mat()
+    {
+        for(int j=0; j<N; j++)
+        {
+            for(int i=0; i<N; i++)
+            {
+                v[j][i] = 0;
+            }
+        }
+    }
+
     mat<N, T> from_vec(vec3f v1, vec3f v2, vec3f v3) const
     {
-        mat m;
+        mat<N, T> m;
 
         for(int i=0; i<3; i++)
             m.v[0][i] = v1.v[i];
@@ -1387,6 +1444,29 @@ struct mat
     vec<3, T> get_v3() const
     {
         return {v[2][0], v[2][1], v[2][2]};
+    }
+
+    mat<N, T> identity()
+    {
+        mat<N, T> ret;
+
+        for(int i=0; i<N; i++)
+        {
+            ret.v[i][i] = 1;
+        }
+
+        return ret;
+    }
+
+    mat<3, float> skew_symmetric_cross_product(vec3f cr)
+    {
+        mat<3, float> ret;
+
+        ret.load({0, -cr.v[2], cr.v[1]},
+                 {cr.v[3], 0, -cr.v[0]},
+                 {-cr.v[1], cr.v[0], 0});
+
+        return ret;
     }
 
     #if 0
@@ -1513,7 +1593,113 @@ struct mat
 
         return ret;
     }
+
+    mat<3, T> operator*(T other) const
+    {
+        mat<3, T> ret;
+
+        for(int j=0; j<3; j++)
+        {
+            for(int i=0; i<3; i++)
+            {
+                ret.v[j][i] = v[j][i] * other;
+            }
+        }
+
+        return ret;
+    }
+
+    mat<3, T> operator+(const mat<3, T>& other) const
+    {
+        mat<3, T> ret;
+
+        for(int j=0; j<3; j++)
+        {
+            for(int i=0; i<3; i++)
+            {
+                ret.v[j][i] = v[j][i] + other.v[j][i];
+            }
+        }
+
+        return ret;
+    }
+
+    mat<3, T> transp()
+    {
+        mat<3, T> ret;
+
+        for(int j=0; j<3; j++)
+        {
+            for(int i=0; i<3; i++)
+            {
+                ret.v[j][i] = v[i][j];
+            }
+        }
+
+        return ret;
+    }
+
+    friend std::ostream& operator<<(std::ostream& os, const mat<N, T>& v1)
+    {
+        for(int j=0; j<N; j++)
+        {
+            for(int i=0; i<N; i++)
+                os << std::to_string(v1.v[j][i]) << " ";
+
+            os << std::endl;
+        }
+
+        return os;
+    }
 };
+
+typedef mat<3, float> mat3f;
+
+inline
+mat3f tensor_product(vec3f v1, vec3f v2)
+{
+    mat3f ret;
+
+    for(int j=0; j<3; j++)
+    {
+        for(int i=0; i<3; i++)
+        {
+            ret.v[j][i] = v1.v[j] * v2.v[i];
+        }
+    }
+
+    return ret;
+}
+
+///need to fix for a == b = I, and a == -b = -I
+///although the latter does not seem valid
+inline
+vec3f mat_from_dir(vec3f d1, vec3f d2)
+{
+    d1 = d1.norm();
+    d2 = d2.norm();
+
+    vec3f d = cross(d1, d2).norm();
+    float c = dot(d1, d2);
+
+    float s = sin(acos(c));
+
+    ///so, d, acos(c) would be axis angle
+
+    mat<3, float> skew_symmetric;
+    skew_symmetric = skew_symmetric.skew_symmetric_cross_product(d);
+
+    mat<3, float> unit;
+
+    unit = unit.identity();
+
+    mat<3, float> ret = unit * c + skew_symmetric * s + tensor_product(d, d) * (1.f - c);
+
+    //std::cout << d << std::endl;
+
+    return ret.get_rotation();
+}
+
 
 /*template<typename T>
 vec<3, T> operator*(const mat<3, T> m, const vec<3, T>& other)
@@ -1527,6 +1713,5 @@ vec<3, T> operator*(const mat<3, T> m, const vec<3, T>& other)
     return val;
 }*/
 
-typedef mat<3, float> mat3f;
 
 #endif // VEC_HPP_INCLUDED
