@@ -499,6 +499,33 @@ vec<N, T> sqrtf(const vec<N, T>& v)
     return ret;
 }
 
+///r theta, phi
+template<typename T>
+inline
+vec<3, T> cartesian_to_polar(const vec<3, T>& cartesian)
+{
+    float r = cartesian.length();
+    float theta = acos(cartesian.v[2] / r);
+    float phi = atan2(cartesian.v[1], cartesian.v[0]);
+
+    return {r, theta, phi};
+}
+
+template<typename T>
+inline
+vec<3, T> polar_to_cartesian(const vec<3, T>& polar)
+{
+    float r = polar.v[0];
+    float theta = polar.v[1];
+    float phi = polar.v[2];
+
+    float x = r * sin(theta) * cos(phi);
+    float y = r * sin(theta) * sin(phi);
+    float z = r * cos(theta);
+
+    return {x, y, z};
+}
+
 template<int N, typename T>
 inline
 vec<N, T> round(const vec<N, T>& v)
@@ -650,6 +677,21 @@ vec<N, T> randf(float M, float MN)
     for(int i=0; i<N; i++)
     {
         ret.v[i] = randf_s(M, MN);
+    }
+
+    return ret;
+}
+
+
+template<int N, typename T>
+inline
+vec<N, T> randv(const vec<N, T>& vm, const vec<N, T>& vmn)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = randf_s(vm.v[i], vmn.v[i]);
     }
 
     return ret;
