@@ -186,6 +186,7 @@ struct vec
         return r;
     }
 
+    inline
     T squared_length() const
     {
         T sqsum = 0;
@@ -198,12 +199,22 @@ struct vec
         return sqsum;
     }
 
-
+    inline
     T length() const
     {
         T l = squared_length();
 
         T val = sqrt(l);
+
+        return val;
+    }
+
+    inline
+    T lengthf() const
+    {
+        T l = squared_length();
+
+        T val = sqrtf(l);
 
         return val;
     }
@@ -526,6 +537,18 @@ vec<3, T> polar_to_cartesian(const vec<3, T>& polar)
     return {x, y, z};
 }
 
+template<typename T>
+inline
+vec<2, T> radius_angle_to_vec(T radius, T angle)
+{
+    vec<2, T> ret;
+
+    ret.v[0] = cos(angle) * radius;
+    ret.v[1] = sin(angle) * radius;
+
+    return ret;
+}
+
 template<int N, typename T>
 inline
 vec<N, T> round(const vec<N, T>& v)
@@ -669,6 +692,18 @@ inline float randf_s(float M, float N)
 }
 
 template<int N, typename T>
+bool any_nan(const vec<N, T>& v)
+{
+    for(int i=0; i<N; i++)
+    {
+        if(std::isnan(v.v[i]))
+            return true;
+    }
+
+    return false;
+}
+
+template<int N, typename T>
 inline
 vec<N, T> randf(float M, float MN)
 {
@@ -681,7 +716,6 @@ vec<N, T> randf(float M, float MN)
 
     return ret;
 }
-
 
 template<int N, typename T>
 inline
@@ -733,9 +767,9 @@ vec<N, T> rand_det(std::minstd_rand& rnd, const vec<N, T>& M, const vec<N, T>& M
     return ret;
 }
 
-template<int N, typename T>
+template<int N, typename T, typename U, typename V>
 inline
-vec<N, T> clamp(vec<N, T> v1, T p1, T p2)
+vec<N, T> clamp(vec<N, T> v1, U p1, V p2)
 {
     for(int i=0; i<N; i++)
     {
@@ -900,6 +934,27 @@ inline vec<N, T> fabs(const vec<N, T>& v)
     {
         v1.v[i] = fabs(v.v[i]);
     }
+
+    return v1;
+}
+
+template<int N, typename T, typename U>
+inline vec<N, T> fmod(const vec<N, T>& v, U n)
+{
+    vec<N, T> v1;
+
+    for(int i=0; i<N; i++)
+    {
+        v1.v[i] = fmod(v.v[i], n);
+    }
+
+    return v1;
+}
+
+template<int N, typename T>
+inline vec<N, T> frac(const vec<N, T>& v)
+{
+    vec<N, T> v1 = fmod(v, (T)1.);
 
     return v1;
 }
