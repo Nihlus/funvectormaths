@@ -587,7 +587,7 @@ vec<N, T> vcos(const vec<N, T>& v)
 
     for(int i=0; i<N; i++)
     {
-        ret.v[i] = cosf(v.v[i]);
+        ret.v[i] = cos(v.v[i]);
     }
 
     return ret;
@@ -601,7 +601,7 @@ vec<N, T> vsin(const vec<N, T>& v)
 
     for(int i=0; i<N; i++)
     {
-        ret.v[i] = sinf(v.v[i]);
+        ret.v[i] = sin(v.v[i]);
     }
 
     return ret;
@@ -951,6 +951,26 @@ inline vec<N, T> fmod(const vec<N, T>& v, U n)
     return v1;
 }
 
+template<typename T, typename U>
+inline T modulus_positive(T t, U n)
+{
+    ///floor not trunc like fmod
+    return t - floor(t/n) * n;
+}
+
+template<int N, typename T, typename U>
+inline vec<N, T> modulus_positive(const vec<N, T>& v, U n)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = modulus_positive(v.v[i], n);
+    }
+
+    return ret;
+}
+
 template<int N, typename T>
 inline vec<N, T> frac(const vec<N, T>& v)
 {
@@ -1147,6 +1167,25 @@ inline vec<N, T> conv(const vec<N, U>& v1)
     return ret;
 }
 
+///there's probably a better way of doing this
+template<typename U, typename T>
+inline U conv_implicit(const vec<2, T>& v1)
+{
+    return {v1.v[0], v1.v[1]};
+}
+
+template<typename U, typename T>
+inline U conv_implicit(const vec<3, T>& v1)
+{
+    return {v1.v[0], v1.v[1], v1.v[2]};
+}
+
+template<typename U, typename T>
+inline U conv_implicit(const vec<4, T>& v1)
+{
+    return {v1.v[0], v1.v[1], v1.v[2], v1.v[3]};
+}
+
 template<int N, typename T>
 inline vec<N, T> d2r(const vec<N, T>& v1)
 {
@@ -1295,6 +1334,17 @@ vec<N, T> rejection(const vec<N, T>& v1, const vec<N, T>& v2)
     return val;
 }*/
 
+template<int N, typename T>
+inline
+vec<N, T> projection(const vec<N, T>& v1, const vec<N, T>& dir)
+{
+    vec<N, T> ndir = dir.norm();
+
+    float a1 = dot(v1, ndir);
+
+    return a1 * ndir;
+}
+
 inline vec3f generate_flat_normal(const vec3f& p1, const vec3f& p2, const vec3f& p3)
 {
     return cross(p2 - p1, p3 - p1).norm();
@@ -1423,11 +1473,22 @@ bool is_left_side(const vec<2, T>& l1, const vec<2, float>& l2, const vec<2, flo
     return ((l2.v[0] - l1.v[0]) * (lp.v[1] - l1.v[1]) - (l2.v[1] - l1.v[1]) * (lp.v[0] - l1.v[0])) > 0;
 }
 
+///nicked off stackoverflow
+template <typename T> int signum(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
+///don't want to have to include all of algorithm for just this function
+template<class T>
+const T& max(const T& a, const T& b)
+{
+    return (a < b) ? b : a;
+}
 
 template<int N, typename T>
 struct mat
 {
-    T v[N][N];
+    T v[N][N] = {{0}};
 
     mat()
     {
@@ -1555,12 +1616,13 @@ struct mat
         return ret;
     }
 
+    ///ffs this was wrong
     mat<3, float> skew_symmetric_cross_product(vec3f cr)
     {
         mat<3, float> ret;
 
         ret.load({0, -cr.v[2], cr.v[1]},
-                 {cr.v[3], 0, -cr.v[0]},
+                 {cr.v[2], 0, -cr.v[0]},
                  {-cr.v[1], cr.v[0], 0});
 
         return ret;
@@ -1619,6 +1681,8 @@ struct mat
         vec3f c = vcos(rotation);
         vec3f s = vsin(rotation);
 
+        //printf("%f %f\n", c.v[1], s.v[1]);
+
         mat<3, float> v1;
 
         v1.load({1, 0, 0}, {0, c.v[0], s.v[0]}, {0, -s.v[0], c.v[0]});
@@ -1647,9 +1711,95 @@ struct mat
         //rotation.v[1] = asin(v[2][0]);
         //rotation.v[0] = -atan2(v[1][0], v[0][0]);
 
+        ///need to deal with v[2][2] very close to 0
+
+
+        float s2 = -v[0][2];
+
+        ///so... s2 might be broken if we're here?
+        bool ruh_roh = s2 < -0.995 || s2 >= 0.995;
+
+        float possible_t1_1 = asin(s2);
+        float possible_t1_2 = M_PI - asin(s2);
+
+        float cp1 = cos(possible_t1_1);
+        float cp2 = cos(possible_t1_2);
+
+        float possible_v0_1 = atan2(v[1][2] / cp1, v[2][2] / cp1);
+        float possible_v0_2 = atan2(v[1][2] / cp2, v[2][2] / cp2);
+
+        float possible_v2_1 = atan2(v[0][1] / cp1, v[0][0] / cp1);
+        float possible_v2_2 = atan2(v[0][1] / cp2, v[0][0] / cp2);
+
+        //printf("P %f %f %f\n", possible_v0_1, possible_t1_1, possible_v2_1);
+        //printf("R %f %f %f\n", possible_v0_2, possible_t1_2, possible_v2_2);
+
+        if(possible_v2_1 >= 0)
+        {
+            return {possible_v0_1, possible_t1_1, possible_v2_1};
+        }
+
+        return {possible_v0_2, possible_t1_2, possible_v2_2};
+
+        ///c2 approximately 0
+        ///v[0] wrong
+
+        //float c2 = cos(asin(s2));
+
+        //float natural_sign = 1;
+
+        //if(c2 < 0)
+        //    natural_sign = -1;
+
+        //printf("natsign %f %f\n", natural_sign, s2);
+
         rotation.v[0] = atan2(v[1][2], v[2][2]);
-        rotation.v[1] = -asin(v[0][2]);
+        rotation.v[1] = asin(s2);
         rotation.v[2] = atan2(v[0][1], v[0][0]);
+
+        printf("r1 %f %f %f\n", rotation.v[0], rotation.v[1], rotation.v[2]);
+
+
+        ///alternate calculation for v[0]
+        ///SIGH, have to handle all the fucking polarity cases
+        ///piece of shit eat more wanker euler
+        /*if(ruh_roh)
+        {
+            //rotation.v[0] = atan2(-v[2][1], v[1][1]);
+
+            ///in the case of this, rotation.v[2] is ALSO broken
+            ///FOR FUCKS SAKE
+            ///WHAT IS THIS
+
+
+
+
+            float s3 = sin(rotation.v[2]);
+            float c3 = cos(rotation.v[2]);
+
+            if(s2 > 0.995)
+            {
+                float c3m1 = (v[1][1] + v[2][0]) / 2;
+
+                float a3m1 = acos(c3m1);
+
+                rotation.v[0] = rotation.v[2] - a3m1;
+            }
+            else
+            {
+                float s3p1 = -(v[1][0] + v[2][1]) / 2;
+
+                float a3p1 = asin(s3p1);
+
+                rotation.v[0] = a3p1 - rotation.v[2];
+            }
+        }*/
+
+        //printf("%f %f\n", v[0][0], v[0][2]);
+
+        //printf("r0 %f s2 %f\n", rotation.v[0], s2);
+
+        //printf("err %f %f %i\n", s2, v[2][2], ruh_roh);
 
         //printf("[2][2] %f\n", v[2][2]);
 
@@ -1796,6 +1946,183 @@ vec3f mat_from_dir(vec3f d1, vec3f d2)
 
     return ret.get_rotation();
 }
+
+inline
+mat3f map_unit_a_to_b(vec3f a, vec3f b)
+{
+    mat3f I;
+    I = I.identity();
+
+    a = a.norm();
+    b = b.norm();
+
+    vec3f v = cross(a, b);
+
+    mat3f skew;
+
+    skew = skew.skew_symmetric_cross_product(v);
+
+    float s = v.length();
+    float c = dot(a,b);
+
+    //printf("sc %f %f\n", s, c);
+
+    //std::cout << skew << "\n skew\n";
+
+    if(c > 0.99995)
+    {
+        mat3f none;
+        none.load_rotation_matrix({0,0,0});
+
+        return none;
+    }
+
+    mat3f ret = I + skew + skew*skew * ((1 - c) / (s*s));
+
+    return ret;
+}
+
+///http://www.euclideanspace.com/maths/geometry/rotations/conversions/angleToMatrix/
+inline
+mat3f axis_angle_to_mat(vec3f axis, float angle)
+{
+    float c = cos(angle);
+    float s = sin(angle);
+    float t = 1.f - c;
+
+    axis = axis.norm();
+
+    float x = axis.v[0];
+    float y = axis.v[1];
+    float z = axis.v[2];
+
+    mat3f m;
+
+    m.v[0][0] = t*x*x + c;
+    m.v[0][1] = t*x*y - z*s;
+    m.v[0][2] = t*x*z + y*s;
+
+    m.v[1][0] = t*x*y + z*s;
+    m.v[1][1] = t*y*y + c;
+    m.v[1][2] = t*y*z - x*s;
+
+    m.v[2][0] = t*x*z - y*s;
+    m.v[2][1] = t*y*z + x*s;
+    m.v[2][2] = t*z*z + c;
+
+    return m;
+}
+
+struct quaternion
+{
+    vec4f q;
+
+    void load_from_matrix(const mat3f& m)
+    {
+        vec4f l;
+
+        float m00 = m.v[0][0];
+        float m11 = m.v[1][1];
+        float m22 = m.v[2][2];
+
+        l.v[3] = sqrt( max( 0.f, 1 + m00 + m11 + m22 ) ) / 2;
+        l.v[0] = sqrt( max( 0.f, 1 + m00 - m11 - m22 ) ) / 2;
+        l.v[1] = sqrt( max( 0.f, 1 - m00 + m11 - m22 ) ) / 2;
+        l.v[2] = sqrt( max( 0.f, 1 - m00 - m11 + m22 ) ) / 2;
+
+        float m21 = m.v[2][1];
+        float m12 = m.v[1][2];
+        float m02 = m.v[0][2];
+        float m20 = m.v[2][0];
+        float m10 = m.v[1][0];
+        float m01 = m.v[0][1];
+
+        //int s1 = signum(m21 - m12);
+        //int s2 = signum(m02 - m20);
+        //int s3 = signum(m10 - m01);
+
+        l.v[0] = std::copysign( l.v[0], m21 - m12 );
+        l.v[1] = std::copysign( l.v[1], m02 - m20 );
+        l.v[2] = std::copysign( l.v[2], m10 - m01 );
+
+        q = l;
+    }
+
+    ///http://number-none.com/product/Understanding%20Slerp,%20Then%20Not%20Using%20It/
+    ///we could use nlerp, but then the page provides a slerp implementation
+    ///soo.. uuuh.. Sorry page author
+    ///although they use numerically instable interpolation for the numerically unstable case,
+    ///so now i feel like i can gloat at least
+    ///http://www.mrpt.org/tutorials/programming/maths-and-geometry/slerp-interpolation/
+    ///seems more legit
+    quaternion slerp(const quaternion& q1, const quaternion& q2, float t)
+    {
+        float d = dot(q1.q, q2.q);
+
+        const float threshold = 0.9995f;
+
+        if(d > threshold)
+        {
+            quaternion nq;
+
+            nq.q = q1.q * (1.f - t) + q2.q * t;
+
+            ///can... can this even not be normalised?
+            ///i'm starting to trust this code less
+            nq.q = nq.q.norm();
+
+            return nq;
+        }
+
+        d = clamp(d, -1.f, 1.f);
+
+        bool is_negative = false;
+
+        if(d < 0)
+        {
+            is_negative = true;
+            d = -d;
+        }
+
+        float theta = acos(d);
+        float sintheta = sin(theta);
+
+        float A = sin((1.f - t) * theta) / sintheta;
+        float B = sin(t * theta) / sintheta;
+
+        if(is_negative)
+        {
+            return {A * q1.q - B * q2.q};
+        }
+
+        return {A * q1.q + B * q2.q};
+    }
+
+    ///http://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/
+    mat3f get_rotation_matrix()
+    {
+        mat3f m;
+
+        float qx = q.v[0];
+        float qy = q.v[1];
+        float qz = q.v[2];
+        float qw = q.v[3];
+
+        m.v[0][0] = 1 - 2*qy*qy - 2*qz*qz;
+        m.v[0][1] = 2*qx*qy - 2*qz*qw;
+        m.v[0][2] = 2*qx*qz + 2*qy*qw;
+
+        m.v[1][0] = 2*qx*qy + 2*qz*qw;
+        m.v[1][1] = 1 - 2*qx*qx - 2*qz*qz;
+        m.v[1][2] = 2*qy*qz - 2*qx*qw;
+
+        m.v[2][0] = 2*qx*qz - 2*qy*qw;
+        m.v[2][1] = 2*qy*qz + 2*qx*qw;
+        m.v[2][2] = 1 - 2*qx*qx - 2*qy*qy;
+
+        return m;
+    }
+};
 
 
 /*template<typename T>
