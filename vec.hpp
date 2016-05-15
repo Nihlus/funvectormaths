@@ -1734,7 +1734,23 @@ struct mat
         //printf("P %f %f %f\n", possible_v0_1, possible_t1_1, possible_v2_1);
         //printf("R %f %f %f\n", possible_v0_2, possible_t1_2, possible_v2_2);
 
-        if(possible_v2_1 >= 0)
+        //vec3f reference_vector = (vec3f){0, 0, 1}.rot({})
+
+        ///they both represent the same rotation, we just need to convert when we cross the midpoint
+        vec3f rotated_point = (vec3f){0, 0, 1}.rot({0,0,0}, {possible_v0_1, possible_t1_1, possible_v2_1});
+
+        vec3f normal = {0, 0, 1};
+
+        float cangle = dot(normal, rotated_point);
+
+        ///nope
+        ///but the problem is just which one of these two we pick
+        ///so we're getting close
+        ///we just need to define which hemisphere we're on
+        ///which can't be THAT hard
+
+        ///ok, so this doesnt work for z rotation
+        //if(fabs(acos(cangle)) < M_PI/2)
         {
             return {possible_v0_1, possible_t1_1, possible_v2_1};
         }
