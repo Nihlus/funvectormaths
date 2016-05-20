@@ -1652,6 +1652,42 @@ struct mat
     }
     #endif
 
+    mat<3, float> XRot(float angle)
+    {
+        float c = cos(angle);
+        float s = sin(angle);
+
+        mat<3, float> v1;
+
+        v1.load({1, 0, 0}, {0, c, s}, {0, -s, c});
+
+        return v1;
+    }
+
+    mat<3, float> YRot(float angle)
+    {
+        float c = cos(angle);
+        float s = sin(angle);
+
+        mat<3, float> v2;
+
+        v2.load({c, 0, -s}, {0, 1, 0}, {s, 0, c});
+
+        return v2;
+    }
+
+    mat<3, float> ZRot(float angle)
+    {
+        float c = cos(angle);
+        float s = sin(angle);
+
+        mat<3, float> v3;
+
+        v3.load({c, s, 0}, {-s, c, 0}, {0, 0, 1});
+
+        return v3;
+    }
+
     void load_rotation_matrix(vec3f _rotation)
     {
         /*vec3f c;
@@ -2071,6 +2107,7 @@ struct quaternion
     ///so now i feel like i can gloat at least
     ///http://www.mrpt.org/tutorials/programming/maths-and-geometry/slerp-interpolation/
     ///seems more legit
+    static
     quaternion slerp(const quaternion& q1, const quaternion& q2, float t)
     {
         float d = dot(q1.q, q2.q);
@@ -2139,6 +2176,8 @@ struct quaternion
         return m;
     }
 };
+
+typedef quaternion quat;
 
 
 /*template<typename T>
