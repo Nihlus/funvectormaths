@@ -45,6 +45,52 @@ struct vec
         }
     }
 
+    float& x()
+    {
+        return v[0];
+    }
+
+    float& y()
+    {
+        return v[1];
+    }
+
+    float& z()
+    {
+        return v[2];
+    }
+
+    float& w()
+    {
+        return v[3];
+    }
+
+    vec<2, T>& xy()
+    {
+        ///umm. I think I might have committed some sort of deadly sin
+        ///although I believe the C spec is slightly more permitting of this than
+        ///you might believe at first sight
+        vec<2, T>& ret = *(vec<2, T>*)&v[0];
+
+        return ret;
+    }
+
+    vec<2, T>& yz()
+    {
+        ///umm. I think I might have committed some sort of deadly sin
+        ///although I believe the C spec is slightly more permitting of this than
+        ///you might believe at first sight
+        vec<2, T>& ret = *(vec<2, T>*)&v[1];
+
+        return ret;
+    }
+
+    ///can't figure out an easy way to make this referency
+    vec<2, T> xz()
+    {
+        return {v[0], v[2]};
+    }
+
     ///lets modernise the code a little
     vec()
     {
@@ -849,7 +895,6 @@ inline vec3f cross(const vec3f& v1, const vec3f& v2)
     return ret;
 }
 
-
 ///counterclockwise
 template<int N, typename T>
 inline vec<N, T> perpendicular(const vec<N, T>& v1)
@@ -1531,6 +1576,8 @@ struct mat
 
     float det() const
     {
+        static_assert(N == 3, "N must be 3");
+
         float a11, a12, a13, a21, a22, a23, a31, a32, a33;
 
         a11 = v[0][0];
@@ -1551,7 +1598,7 @@ struct mat
         return d;
     }
 
-    mat<N, T> invert() const
+    mat<3, T> invert() const
     {
         float d = det();
 
@@ -1858,30 +1905,42 @@ struct mat
         return rotation;
     }
 
-    vec<3, T> operator*(const vec<3, T>& other) const
+    vec<N, T> operator*(const vec<N, T>& other) const
     {
-        vec<3, T> val;
+        vec<N, T> val;
 
-        val.v[0] = v[0][0] * other.v[0] + v[0][1] * other.v[1] + v[0][2] * other.v[2];
+        /*val.v[0] = v[0][0] * other.v[0] + v[0][1] * other.v[1] + v[0][2] * other.v[2];
         val.v[1] = v[1][0] * other.v[0] + v[1][1] * other.v[1] + v[1][2] * other.v[2];
-        val.v[2] = v[2][0] * other.v[0] + v[2][1] * other.v[1] + v[2][2] * other.v[2];
+        val.v[2] = v[2][0] * other.v[0] + v[2][1] * other.v[1] + v[2][2] * other.v[2];*/
+
+        for(int i=0; i<N; i++)
+        {
+            float accum = 0;
+
+            for(int j=0; j<N; j++)
+            {
+                accum += v[i][j] * other.v[j];
+            }
+
+            val.v[i] = accum;
+        }
 
         return val;
     }
 
-    mat<3, T> operator*(const mat<3, T>& other) const
+    mat<N, T> operator*(const mat<N, T>& other) const
     {
-        mat<3, T> ret;
+        mat<N, T> ret;
 
-        for(int j=0; j<3; j++)
+        for(int j=0; j<N; j++)
         {
-            for(int i=0; i<3; i++)
+            for(int i=0; i<N; i++)
             {
                 //float val = v[j][0] * other.v[0][i] + v[j][1] * other.v[1][i] + v[j][2] * other.v[2][i];
 
                 float accum = 0;
 
-                for(int k=0; k<3; k++)
+                for(int k=0; k<N; k++)
                 {
                     accum += v[j][k] * other.v[k][i];
                 }
@@ -1908,13 +1967,13 @@ struct mat
         return ret;
     }
 
-    mat<3, T> operator+(const mat<3, T>& other) const
+    mat<N, T> operator+(const mat<N, T>& other) const
     {
-        mat<3, T> ret;
+        mat<N, T> ret;
 
-        for(int j=0; j<3; j++)
+        for(int j=0; j<N; j++)
         {
-            for(int i=0; i<3; i++)
+            for(int i=0; i<N; i++)
             {
                 ret.v[j][i] = v[j][i] + other.v[j][i];
             }
@@ -1923,13 +1982,13 @@ struct mat
         return ret;
     }
 
-    mat<3, T> transp()
+    mat<N, T> transp()
     {
-        mat<3, T> ret;
+        mat<N, T> ret;
 
-        for(int j=0; j<3; j++)
+        for(int j=0; j<N; j++)
         {
-            for(int i=0; i<3; i++)
+            for(int i=0; i<N; i++)
             {
                 ret.v[j][i] = v[i][j];
             }
