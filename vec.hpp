@@ -3,10 +3,12 @@
 
 #include <math.h>
 #include <algorithm>
+#include <functional>
 #include <initializer_list>
 #include <iostream>
 #include <float.h>
 #include <random>
+//#include <functional>
 
 #define M_PI		3.14159265358979323846
 #define M_PIf ((float)M_PI)
@@ -230,6 +232,19 @@ struct vec
         }
 
         return r;
+    }
+
+    template<typename U>
+    vec<N, U> map(std::function<U(T)> func)
+    {
+        vec<N, U> ret;
+
+        for(int i=0; i<N; i++)
+        {
+            ret.v[i] = func(v[i]);
+        }
+
+        return ret;
     }
 
     inline
@@ -709,6 +724,7 @@ typedef vec<4, float> vec4f;
 typedef vec<3, float> vec3f;
 typedef vec<2, float> vec2f;
 
+typedef vec<4, int> vec4i;
 typedef vec<3, int> vec3i;
 typedef vec<2, int> vec2i;
 
@@ -1782,20 +1798,13 @@ struct mat
         *this = v1 * v2 * v3;
     }
 
+    ///fix the nan
+    ///nanananananananana batman
     vec3f get_rotation()
     {
         vec3f rotation;
 
-        //rotation.v[0] = atan2(v[2][0], v[2][1]);
-        //rotation.v[1] = acos(v[2][2]);
-        //rotation.v[2] = -atan2(v[0][2], v[1][2]);
-
-        //rotation.v[2] = -atan2(v[2][1], v[2][2]);
-        //rotation.v[1] = asin(v[2][0]);
-        //rotation.v[0] = -atan2(v[1][0], v[0][0]);
-
         ///need to deal with v[2][2] very close to 0
-
 
         float s2 = -v[0][2];
 
@@ -1803,28 +1812,24 @@ struct mat
         bool ruh_roh = s2 < -0.995 || s2 >= 0.995;
 
         float possible_t1_1 = asin(s2);
-        float possible_t1_2 = M_PI - asin(s2);
+        //float possible_t1_2 = M_PI - asin(s2);
 
         float cp1 = cos(possible_t1_1);
-        float cp2 = cos(possible_t1_2);
+        //float cp2 = cos(possible_t1_2);
 
-        float possible_v0_1 = atan2(v[1][2] / cp1, v[2][2] / cp1);
-        float possible_v0_2 = atan2(v[1][2] / cp2, v[2][2] / cp2);
+        ///should really handle the 0/0 / 0/0 case
+        float possible_v0_1 = atan2(v[1][2], v[2][2]);
+        //float possible_v0_2 = atan2(v[1][2] / cp2, v[2][2] / cp2);
 
-        float possible_v2_1 = atan2(v[0][1] / cp1, v[0][0] / cp1);
-        float possible_v2_2 = atan2(v[0][1] / cp2, v[0][0] / cp2);
-
-        //printf("P %f %f %f\n", possible_v0_1, possible_t1_1, possible_v2_1);
-        //printf("R %f %f %f\n", possible_v0_2, possible_t1_2, possible_v2_2);
-
-        //vec3f reference_vector = (vec3f){0, 0, 1}.rot({})
+        float possible_v2_1 = atan2(v[0][1], v[0][0]);
+        //float possible_v2_2 = atan2(v[0][1] / cp2, v[0][0] / cp2);
 
         ///they both represent the same rotation, we just need to convert when we cross the midpoint
-        vec3f rotated_point = (vec3f){0, 0, 1}.rot({0,0,0}, {possible_v0_1, possible_t1_1, possible_v2_1});
+        //vec3f rotated_point = (vec3f){0, 0, 1}.rot({0,0,0}, {possible_v0_1, possible_t1_1, possible_v2_1});
 
-        vec3f normal = {0, 0, 1};
+        //vec3f normal = {0, 0, 1};
 
-        float cangle = dot(normal, rotated_point);
+        //float cangle = dot(normal, rotated_point);
 
         ///nope
         ///but the problem is just which one of these two we pick
@@ -1838,7 +1843,7 @@ struct mat
             return {possible_v0_1, possible_t1_1, possible_v2_1};
         }
 
-        return {possible_v0_2, possible_t1_2, possible_v2_2};
+        //return {possible_v0_2, possible_t1_2, possible_v2_2};
 
         ///c2 approximately 0
         ///v[0] wrong
@@ -1852,11 +1857,11 @@ struct mat
 
         //printf("natsign %f %f\n", natural_sign, s2);
 
-        rotation.v[0] = atan2(v[1][2], v[2][2]);
-        rotation.v[1] = asin(s2);
-        rotation.v[2] = atan2(v[0][1], v[0][0]);
+        //rotation.v[0] = atan2(v[1][2], v[2][2]);
+        //rotation.v[1] = asin(s2);
+        //rotation.v[2] = atan2(v[0][1], v[0][0]);
 
-        printf("r1 %f %f %f\n", rotation.v[0], rotation.v[1], rotation.v[2]);
+        //printf("r1 %f %f %f\n", rotation.v[0], rotation.v[1], rotation.v[2]);
 
 
         ///alternate calculation for v[0]
