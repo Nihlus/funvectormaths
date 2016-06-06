@@ -2164,6 +2164,11 @@ struct quaternion
         q = l;
     }
 
+    void from_vec(const vec4f& raw)
+    {
+        q = raw;
+    }
+
     ///http://number-none.com/product/Understanding%20Slerp,%20Then%20Not%20Using%20It/
     ///we could use nlerp, but then the page provides a slerp implementation
     ///soo.. uuuh.. Sorry page author
