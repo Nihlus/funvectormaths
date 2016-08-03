@@ -1192,6 +1192,8 @@ inline vec<4, float> rgba_to_vec(const U& rgba)
     return ret;
 }
 
+
+///could probably sfinae this
 template<typename U>
 inline vec<3, float> xyz_to_vec(const U& xyz)
 {
@@ -1258,6 +1260,11 @@ inline vec<N, T> d2r(const vec<N, T>& v1)
     }
 
     return ret;
+}
+
+inline float mix(float p1, float p2, float a)
+{
+    return p1 * (1.f - a) + p2 * a;
 }
 
 template<int N, typename T>
@@ -2243,6 +2250,40 @@ struct quaternion
         m.v[2][2] = 1 - 2*qx*qx - 2*qy*qy;
 
         return m;
+    }
+
+    quaternion norm()
+    {
+        float w = q.v[3];
+
+        quaternion ret;
+
+        ret.q.v[0] = q.v[0] / w;
+        ret.q.v[1] = q.v[1] / w;
+        ret.q.v[2] = q.v[2] / w;
+        ret.q.v[3] = 1;
+
+        return ret;
+    }
+
+    float x()
+    {
+       return q.x();
+    }
+
+    float y()
+    {
+       return q.y();
+    }
+
+    float z()
+    {
+       return q.z();
+    }
+
+    float w()
+    {
+       return q.w();
     }
 };
 
