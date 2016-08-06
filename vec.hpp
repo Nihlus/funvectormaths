@@ -1192,7 +1192,6 @@ inline vec<4, float> rgba_to_vec(const U& rgba)
     return ret;
 }
 
-
 ///could probably sfinae this
 template<typename U>
 inline vec<3, float> xyz_to_vec(const U& xyz)
@@ -1247,6 +1246,12 @@ template<typename U, typename T>
 inline U conv_implicit(const vec<4, T>& v1)
 {
     return {v1.v[0], v1.v[1], v1.v[2], v1.v[3]};
+}
+
+template<typename U, typename T>
+inline U conv_implicit(const T& q)
+{
+    return {q.q.v[0], q.q.v[1], q.q.v[2], q.q.v[3]};
 }
 
 template<int N, typename T>
@@ -2138,7 +2143,12 @@ mat3f axis_angle_to_mat(vec3f axis, float angle)
 
 struct quaternion
 {
-    vec4f q;
+    vec4f q = {0,0,0,1};
+
+    /*quaternion()
+    {
+        q = {0,0,0,1};
+    }*/
 
     void load_from_matrix(const mat3f& m)
     {
@@ -2254,7 +2264,7 @@ struct quaternion
 
     quaternion norm()
     {
-        float w = q.v[3];
+        /*float w = q.v[3];
 
         quaternion ret;
 
@@ -2263,7 +2273,38 @@ struct quaternion
         ret.q.v[2] = q.v[2] / w;
         ret.q.v[3] = 1;
 
+        return ret;*/
+
+        quaternion ret;
+
+        ret.q = q.norm();
+
         return ret;
+    }
+
+    quaternion conjugate()
+    {
+        quaternion ret;
+
+        ret.q = q;
+
+        ret.q.v[0] = -ret.q.v[0];
+        ret.q.v[1] = -ret.q.v[1];
+        ret.q.v[2] = -ret.q.v[2];
+
+        return ret;
+    }
+
+    quaternion inverse()
+    {
+        quaternion conj = conjugate();
+
+        vec4f l = conj.q / (q.lengthf() * q.lengthf());
+
+        quaternion q;
+        q.q = l;
+
+        return q;
     }
 
     float x()
