@@ -47,22 +47,22 @@ struct vec
         }
     }
 
-    float& x()
+    T& x()
     {
         return v[0];
     }
 
-    float& y()
+    T& y()
     {
         return v[1];
     }
 
-    float& z()
+    T& z()
     {
         return v[2];
     }
 
-    float& w()
+    T& w()
     {
         return v[3];
     }
@@ -419,11 +419,29 @@ struct vec
 
     vec<N, T> back_rot(const vec<3, float>& position, const vec<3, float>& rotation) const
     {
-        vec<3, float> new_pos = this->rot(position, (vec<3, float>){-rotation.v[0], 0, 0});
+        /*vec<3, float> new_pos = this->rot(position, (vec<3, float>){-rotation.v[0], 0, 0});
         new_pos = new_pos.rot(position, (vec<3, float>){0, -rotation.v[1], 0});
         new_pos = new_pos.rot(position, (vec<3, float>){0, 0, -rotation.v[2]});
 
-        return new_pos;
+        return new_pos;*/
+
+        vec<N, T> c, s;
+
+        for(int i=0; i<N; i++)
+        {
+            c.v[i] = cos(rotation.v[i]);
+            s.v[i] = sin(rotation.v[i]);
+        }
+
+        vec<N, T> rel = *this - position;
+
+        vec<N, T> ret;
+
+        ret.x() = c.y() * c.z() * rel.x() + (s.x() * s.y() * c.z() - c.x() * s.z()) * rel.y() + (c.x() * s.y() * c.z() + s.x() * s.z()) * rel.z();
+        ret.y() = (s.z() * c.y()) * rel.x() + (c.x() * c.z() + s.x() * s.y() * s.z()) * rel.y() + (-s.x() * c.z() + c.x() * s.y() * s.z()) * rel.z();
+        ret.z() = -s.y() * rel.x() + (s.x() * c.y()) * rel.y() + (c.x() * c.y()) * rel.z();
+
+        return ret;
     }
 
     ///only valid for a 2-vec
@@ -569,6 +587,14 @@ vec<N, T> sqrtf(const vec<N, T>& v)
     }
 
     return ret;
+}
+
+template<typename T, typename U>
+approx_equal(T v1, U v2)
+{
+    float bound = 0.0001f;
+
+    return v1 >= v2 - bound && v1 < v2 + bound;
 }
 
 ///r theta, phi
@@ -935,7 +961,7 @@ template<int N, typename T>
 inline
 T angle_between_vectors(const vec<N, T>& v1, const vec<N, T>& v2)
 {
-    return acos(dot(v1.norm(), v2.norm()));
+    return acos(clamp(dot(v1.norm(), v2.norm()), -1.f, 1.f));
 }
 
 template<int N, typename T>
@@ -1194,6 +1220,34 @@ inline vec<4, float> rgba_to_vec(const U& rgba)
 
 ///could probably sfinae this
 template<typename U>
+inline vec<4, float> xyzw_to_vec(const U& xyzw)
+{
+    vec<4, float> ret;
+
+    ret.v[0] = xyzw.x;
+    ret.v[1] = xyzw.y;
+    ret.v[2] = xyzw.z;
+    ret.v[3] = xyzw.w;
+
+    return ret;
+}
+
+///could probably sfinae this
+template<typename U>
+inline vec<4, float> xyzwf_to_vec(const U& xyzw)
+{
+    vec<4, float> ret;
+
+    ret.v[0] = xyzw.x();
+    ret.v[1] = xyzw.y();
+    ret.v[2] = xyzw.z();
+    ret.v[3] = xyzw.w();
+
+    return ret;
+}
+
+///could probably sfinae this
+template<typename U>
 inline vec<3, float> xyz_to_vec(const U& xyz)
 {
     vec<3, float> ret;
@@ -1201,6 +1255,30 @@ inline vec<3, float> xyz_to_vec(const U& xyz)
     ret.v[0] = xyz.x;
     ret.v[1] = xyz.y;
     ret.v[2] = xyz.z;
+
+    return ret;
+}
+
+/*template<typename U, typename T = decltype(U::x())>
+inline vec<3, float> xyz_to_vec(const U& xyz)
+{
+    vec<3, float> ret;
+
+    ret.v[0] = xyz.x();
+    ret.v[1] = xyz.y();
+    ret.v[2] = xyz.z();
+
+    return ret;
+}*/
+
+template<typename U>
+inline vec<3, float> xyzf_to_vec(const U& xyz)
+{
+    vec<3, float> ret;
+
+    ret.v[0] = xyz.x();
+    ret.v[1] = xyz.y();
+    ret.v[2] = xyz.z();
 
     return ret;
 }
@@ -1473,7 +1551,7 @@ inline std::vector<vec3f> sort_anticlockwise(const T& in, const vec3f& about, st
 
     if(pass_out != nullptr)
     {
-        *pass_out = intermediate;
+        *pass_out = std::move(intermediate);
     }
 
     return out;
@@ -2181,9 +2259,49 @@ struct quaternion
         q = l;
     }
 
+    ///this * ret == q
+    quaternion get_difference(quaternion q)
+    {
+        mat3f t = get_rotation_matrix();
+        mat3f o = q.get_rotation_matrix();
+
+        ///A*q1 = q2
+        ///A = q2 * q1'
+
+        ///q1 * A = q2
+        ///A = q1'q2
+
+        mat3f diff = t.transp() * o;
+
+        quaternion ret;
+        ret.load_from_matrix(diff);
+
+        return ret;
+    }
+
+    void load_from_euler(vec3f _rot)
+    {
+        mat3f mat;
+        mat.load_rotation_matrix(_rot);
+
+        load_from_matrix(mat);
+    }
+
     void from_vec(const vec4f& raw)
     {
         q = raw;
+    }
+
+    quaternion operator*(const quaternion& other) const
+    {
+        quaternion ret;
+
+        ret.q.v[0] = q.v[3] * other.q.v[0] + q.v[0] * other.q.v[3] + q.v[1] * other.q.v[2] - q.v[2] * other.q.v[1];
+        ret.q.v[1] = q.v[3] * other.q.v[1] + q.v[1] * other.q.v[3] + q.v[2] * other.q.v[0] - q.v[0] * other.q.v[2];
+        ret.q.v[2] = q.v[3] * other.q.v[2] + q.v[2] * other.q.v[3] + q.v[0] * other.q.v[1] - q.v[1] * other.q.v[0];
+        ret.q.v[3] = q.v[3] * other.q.v[3] - q.v[0] * other.q.v[0] - q.v[1] * other.q.v[1] - q.v[2] * other.q.v[2];
+
+        return ret;
     }
 
     ///http://number-none.com/product/Understanding%20Slerp,%20Then%20Not%20Using%20It/
@@ -2307,6 +2425,38 @@ struct quaternion
         return q;
     }
 
+    vec4f to_axis_angle()
+    {
+        float qx = q.v[0];
+        float qy = q.v[1];
+        float qz = q.v[2];
+        float qw = q.v[3];
+
+        float angle = 2 * acos(qw);
+        float x = qx / sqrt(1-qw*qw);
+        float y = qy / sqrt(1-qw*qw);
+        float z = qz / sqrt(1-qw*qw);
+
+        if(qw >= 0.999f)
+        {
+            x = 1;
+            y = 0;
+            z = 0;
+        }
+
+        return {x, y, z, angle};
+    }
+
+    void load_from_axis_angle(vec4f aa)
+    {
+        q.v[0] = aa.v[0] * sin(aa.v[3]/2);
+        q.v[1] = aa.v[1] * sin(aa.v[3]/2);
+        q.v[2] = aa.v[2] * sin(aa.v[3]/2);
+        q.v[3] = cos(aa.v[3]/2);
+
+        q = q.norm();
+    }
+
     float x()
     {
        return q.x();
@@ -2326,7 +2476,71 @@ struct quaternion
     {
        return q.w();
     }
+
+    quaternion identity()
+    {
+        return {{0, 0, 0, 1}};
+    }
 };
+
+
+inline
+quaternion convert_leap_quaternion(quaternion q)
+{
+    vec4f aa = q.to_axis_angle();
+
+    aa.v[0] = -aa.v[0];
+    aa.v[1] = -aa.v[1];
+
+    q.load_from_axis_angle(aa);
+
+    return q;
+}
+
+
+template<typename T>
+inline
+quaternion convert_from_leap_quaternion(T ql)
+{
+    quaternion q = {{ql.x, ql.y, ql.z, ql.w}};
+
+    return convert_leap_quaternion(q);
+}
+
+template<typename T>
+inline
+quaternion convert_from_bullet_quaternion(T ql)
+{
+    quaternion q = {{ql.x(), ql.y(), ql.z(), ql.w()}};
+
+    return q;
+}
+
+///something i found in their source, ???
+inline
+mat3f leapquat_to_mat(quaternion q)
+{
+    float d = q.q.length() * q.q.length();
+
+    float s = 2.f / d;
+
+    vec4f v = q.q;
+
+    float xs = v.v[0] * s, ys = v.v[1] * s, zs = v.v[2] * s;
+    float wx = v.v[3] * xs, wy = v.v[3] * ys, wz = v.v[3] * zs;
+    float xx = v.v[0] * xs, xy = v.v[0] * ys, xz = v.v[0] * zs;
+    float yy = v.v[1] * ys, yz = v.v[1] * zs, zz = v.v[2] * zs;
+
+    vec3f r1 = {1.f - (yy + zz), xy + wz, xz - wy};
+    vec3f r2 = {xy - wz, 1.f - (xx + zz), yz + wx};
+    vec3f r3 = {xz + wy, yz - wx, 1.f - (xx + yy)};
+
+    mat3f m;
+
+    m.load(r1, r2, r3);
+
+    return m;
+}
 
 typedef quaternion quat;
 
