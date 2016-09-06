@@ -590,7 +590,7 @@ vec<N, T> sqrtf(const vec<N, T>& v)
 }
 
 template<typename T, typename U>
-approx_equal(T v1, U v2)
+T approx_equal(T v1, U v2)
 {
     float bound = 0.0001f;
 
