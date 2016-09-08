@@ -1454,7 +1454,7 @@ vec<N, T> cosint3(const vec<N, T>& v1, const vec<N, T>& mid, const vec<N, T>& v2
 inline
 vec<N, T> rejection(const vec<N, T>& v1, const vec<N, T>& v2)
 {
-    /*vec<N, T> me_to_them = v2 - v1;
+    vec<N, T> me_to_them = v2 - v1;
 
     me_to_them = me_to_them.norm();
 
@@ -1465,9 +1465,9 @@ vec<N, T> rejection(const vec<N, T>& v1, const vec<N, T>& v2)
     vec<N, T> perp = move_dir - to_them_relative;
 
     return perp;
-}*/
+}
 
-/*float cosif3(float y1, float y2, float y3, float frac)
+float cosif3(float y1, float y2, float y3, float frac)
 {
     float fsin = sin(frac * M_PI);
 
@@ -1599,7 +1599,7 @@ float circle_minimum_distance(float v1, float v2)
         return v2 - v1 + M_PI*2.f;
     }
 
-    //float result = std::min(d1, std::min(d2, d3));
+	return std::min(d1, std::min(d2, d3));
 }
 
 ///rename this function
