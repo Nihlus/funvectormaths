@@ -2483,6 +2483,23 @@ struct quaternion
     }
 };
 
+inline
+quaternion look_at_quat(vec3f forw, vec3f up)
+{
+    forw = forw.norm();
+    up = up.norm();
+
+    float cangle = dot(forw, up);
+
+    float angle = acos(cangle);
+
+    vec3f axis = cross(up, forw).norm();
+
+    quaternion q;
+    q.load_from_axis_angle({axis.v[0], axis.v[1], axis.v[2], angle});
+
+    return q;
+}
 
 inline
 quaternion convert_leap_quaternion(quaternion q)
