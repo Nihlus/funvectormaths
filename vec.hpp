@@ -744,6 +744,18 @@ bool operator>= (const vec<N, T>& v1, const vec<N, T>& v2)
     return v1 > v2 || v1 == v2;
 }
 
+template<int N, typename T>
+bool operator!= (const vec<N, T>& v1, const vec<N, T>& v2)
+{
+    for(int i=0; i<N; i++)
+    {
+        if(v1.v[i] != v2.v[i])
+            return true;
+    }
+
+    return false;
+}
+
 #define V3to4(x) {x.v[0], x.v[1], x.v[2], x.v[3]}
 
 typedef vec<4, float> vec4f;
@@ -888,6 +900,19 @@ vec<N, T> clamp(const vec<N, T>& v1, const vec<N, U>& p1, const vec<N, V>& p2)
     {
         ret.v[i] = v1.v[i] < p1.v[i] ? p1.v[i] : v1.v[i];
         ret.v[i] = ret.v[i] > p2.v[i] ? p2.v[i] : ret.v[i];
+    }
+
+    return ret;
+}
+
+template<int N, typename T, typename U>
+vec<N, T> pow(const vec<N, T>& v1, U p)
+{
+    vec<N, T> ret;
+
+    for(int i=0; i<N; i++)
+    {
+        ret.v[i] = pow(v1.v[i], p);
     }
 
     return ret;
@@ -2513,7 +2538,6 @@ quaternion convert_leap_quaternion(quaternion q)
 
     return q;
 }
-
 
 template<typename T>
 inline
